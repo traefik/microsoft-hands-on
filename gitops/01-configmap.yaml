@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microsoft-static-config
+  namespace: traefikee
+data:
+  static.toml: |
+    [entryPoints]
+      [entryPoints.web]
+        address = ":80"
+      [entryPoints.web.http.redirections.entryPoint]
+        to = "websecure"
+        scheme = "https"
+
+      [entryPoints.websecure]
+        address = ":443"
+
+    [api]
+      dashboard = true
+
+    [providers.kubernetesCRD]
+
+    [metrics]
+      [metrics.prometheus]
+
+    [certificatesResolvers.default.acme]
+      email = "tee-prod@containo.us"
+      [certificatesResolvers.default.acme.tlschallenge]
+
+    [authSources]
+      [authSources.microsoft.oidc]
+        issuer = "https://sts.windows.net/9875c33a-9436-4a95-b5d4-fbe9bc2f2c5c/"
+        clientID = "xxxx"
+        clientSecret = "xxxx"
+
+    [apiportal]
+      path = "/spec.json"

@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: apiportal-tls
+  namespace: traefikee
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`apiportal.microsoft.demo.traefiklabs.tech`)
+      services:
+        - name: apiportal@internal
+          kind: TraefikService
+  tls:
+    certResolver: default
+

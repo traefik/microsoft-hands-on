@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: dashboard-tls
+  namespace: traefikee
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`dashboard.microsoft.demo.traefiklabs.tech`)
+      services:
+        - name: api@internal
+          kind: TraefikService
+  tls:
+    certResolver: default

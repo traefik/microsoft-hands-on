@@ -1,0 +1,134 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: app-tls
+  namespace: app
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`app.microsoft.demo.traefiklabs.tech`)
+      services:
+        - name: app-v1
+          port: 80
+      middlewares:
+      #   - name: test-header
+        - name: oidc-auth
+      #   - name: ratelimit
+      #   - name: ldap-auth
+      #   - name: jwt-auth
+      #   - name: oauth
+  tls:
+    certResolver: default
+
+## Rate limit
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: ratelimit
+  namespace: app
+spec:
+  plugin:
+    rateLimit:
+      average: 2
+      burst: 2
+
+## Open ID connect
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: oidc-auth
+  namespace: app
+spec:
+  plugin:
+    oidcAuth:
+      source: microsoft
+      scopes:
+        - openid
+      redirectUrl: "/callback"
+      session:
+        name: "%s-session"
+        path: "/"
+        secret: powpowpowpowpowpowpowpow
+        expiry: 86400
+      forwardHeaders:
+        X-Traefik-Group: groups
+      # claims: Contains(`groups`, `admin`)
+
+
+## Header
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: test-header
+  namespace: app
+spec:
+  headers:
+    sslRedirect: true
+    customRequestHeaders:
+      X-Custom-Header: toto123
+
+
+## JWT
+# ---
+# apiVersion: traefik.containo.us/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: jwt-auth
+#   namespace: app
+# spec:
+#   plugin:
+#     jwtAuth:
+#       source: jwtSource
+#       forwardHeaders:
+#         X-User: id
+
+## OAuth 2.0
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: oauth
+  namespace: app
+spec:
+  plugin:
+    oAuthIntrospection:
+      source: oAuthSource
+      forwardHeaders:
+        X-Traefik-Group: groups
+      claims: Contains(`groups`, `admin`)
+
+## Private plugin demo
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: privatedemo
+  namespace: app
+spec:
+  plugin:
+    privatedemo:
+      value: powpow
+
+# ## LDAP
+# ---
+# apiVersion: traefik.containo.us/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: ldap-auth
+#   namespace: app
+# spec:
+#   plugin:
+#     ldapAuth:
+#       source: ldapSource
+#       baseDN: dc=example,dc=org
+#       # searchFilter: (&(objectClass=inetOrgPerson)(gidNumber=500)(uid=%s))
+#       forwardUsername: true
+#       forwardUsernameHeader: Custom-Username-Header-Name
+#       wwwAuthenticateHeader: true
+#       wwwAuthenticateHeaderRealm: traefikee
