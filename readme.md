@@ -21,7 +21,25 @@ az aks create --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --node-cou
 
 # Retrieve aks credentials
 az aks get-credentials --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --file ~/.kube/${CLUSTER_NAME}.yaml
+
+# Create ad app with reply URLs
+az ad app create --display-name ${CLUSTER_NAME} --reply-urls https://dashboard.microsoft.demo.traefiklabs.tech/callback https://app.microsoft.demo.traefiklabs.tech/callback
+
+# Retrive the appId
+AD_APP_ID=$(az ad app list --display-name ${CLUSTER_NAME} --query '[0].appId' | tr -d '"')
+
+# Generate new credentials
+az ad app credential reset --id ${AD_APP_ID}
+{
+  "appId": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
+  "name": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
+  "password": "random_password",
+  "tenant": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+}
+
+# The appId and password need to be add in the configmap `gitops/01-configmpa.yaml`
 ```
+
 
 ## TraefikEE
 
@@ -145,4 +163,7 @@ az aks delete --name ${CLUSTER_NAME} --resource-group ${CLUSTER_NAME} --yes
 
 # Delete group
 az group delete --name ${CLUSTER_NAME} --yes
+
+# Delete the ad app
+az ad app delete --id ${AD_APP_ID}
 ```
