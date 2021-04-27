@@ -1,6 +1,27 @@
 # Microsoft Hands-on
 
-## Deploy the stack
+# Create AKS cluster
+
+```bash
+export AZURE_APP_ID=aaaa
+export AZURE_TENANT_ID=bbbb
+export AZURE_PASSWORD=ccccc
+export AZURE_SUBSCRIPTION=your-subscription-id
+
+export CLUSTER_NAME=microsoft
+
+# Login to azure
+az login --service-principal --username ${AZURE_APP_ID} --password ${AZURE_PASSWORD} --tenant ${AZURE_TENANT_ID}
+
+# Create grup in azure for the hands on
+az group create --name ${CLUSTER_NAME} --location westeurope
+
+# Create aks cluster
+az aks create --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --node-count 3 --ssh-key-value=~/.ssh/id_rsa --subscription ${AZURE_SUBSCRIPTION} --service-principal ${AZURE_APP_ID} --client-secret ${AZURE_PASSWORD}
+
+# Retrieve aks credentials
+az aks get-credentials --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --file ~/.kube/${CLUSTER_NAME}.yaml
+```
 
 ## TraefikEE
 
@@ -117,3 +138,11 @@ k apply -f app/openapi/old
 ## Clean
 
 Don't forget to stop your environment.
+
+```bash
+# Delete AKS cluster
+az aks delete --name ${CLUSTER_NAME} --resource-group ${CLUSTER_NAME} --yes
+
+# Delete group
+az group delete --name ${CLUSTER_NAME} --yes
+```
