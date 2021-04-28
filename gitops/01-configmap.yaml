@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: microsoft-static-config
+  name: CLUSTER_NAME-static-config
   namespace: traefikee
 data:
   static.toml: |
@@ -21,11 +21,9 @@ data:
 
     [providers.kubernetesCRD]
 
-    [metrics]
-      [metrics.prometheus]
 
     [certificatesResolvers.default.acme]
-      email = "tee-prod@containo.us"
+      email = "LE_EMAIL"
       [certificatesResolvers.default.acme.tlschallenge]
 
     [authSources]
@@ -34,5 +32,3 @@ data:
         clientID = "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx"
         clientSecret = "random_password"
 
-    [apiportal]
-      path = "/spec.json"

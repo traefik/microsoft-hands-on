@@ -8,12 +8,15 @@ export AZURE_TENANT_ID=bbbb
 export AZURE_PASSWORD=ccccc
 export AZURE_SUBSCRIPTION=your-subscription-id
 
-export CLUSTER_NAME=microsoft
+export CLUSTER_NAME=default
+export DOMAIN=example.com
+export LE_EMAIL=user@example.com
+
 
 # Login to azure
 az login --service-principal --username ${AZURE_APP_ID} --password ${AZURE_PASSWORD} --tenant ${AZURE_TENANT_ID}
 
-# Create grup in azure for the hands on
+# Create group in azure for the hands on
 az group create --name ${CLUSTER_NAME} --location westeurope
 
 # Create aks cluster
@@ -23,7 +26,7 @@ az aks create --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --node-cou
 az aks get-credentials --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --file ~/.kube/${CLUSTER_NAME}.yaml
 
 # Create ad app with reply URLs
-az ad app create --display-name ${CLUSTER_NAME} --reply-urls https://dashboard.microsoft.demo.traefiklabs.tech/callback https://app.microsoft.demo.traefiklabs.tech/callback
+az ad app create --display-name ${CLUSTER_NAME} --reply-urls "https://dashboard.${DOMAIN}/callback" "https://app.${DOMAIN}/callback"
 
 # Retrive the appId
 AD_APP_ID=$(az ad app list --display-name ${CLUSTER_NAME} --query '[0].appId' | tr -d '"')
@@ -37,7 +40,7 @@ az ad app credential reset --id ${AD_APP_ID}
   "tenant": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
 }
 
-# The appId and password need to be add in the configmap `gitops/01-configmpa.yaml`
+# The appId and password need to be added in the configmap `gitops/01-configmap.yaml`
 ```
 
 
@@ -50,108 +53,56 @@ az ad app credential reset --id ${AD_APP_ID}
 kubectl create namespace traefikee
 
 # Create secret for the license
-kubectl create secret -n traefikee generic microsoft-license --from-literal=license="${TRAEFIKEE_LICENSE}"
+kubectl create secret -n traefikee generic ${CLUSTER_NAME}-license --from-literal=license="${TRAEFIKEE_LICENSE}"
 
 # Retrieve the yaml file for the installation
-curl -so gitops/00-enterprise.yaml "https://install.enterprise.traefik.io/v2.4?cluster=microsoft&namespace=traefikee&staticconfig=static.toml"
+curl -so gitops/00-enterprise.yaml "https://install.enterprise.traefik.io/v2.4?cluster=${CLUSTER_NAME}&namespace=traefikee&staticconfig=static.toml"
 
 # Adapt static configuration in the configmap
 vi gitops/01-configmap.yaml
+sed -i "s/LE_EMAIL/${LE_EMAIL}/g" gitops/01-configmap.yaml
+sed -i "s/CLUSTER_NAME/${CLUSTER_NAME}/g" gitops/01-configmap.yaml
 
 # Apply the gitops file
-k apply -f gitops/
-
-# Annotate proxies pods to enable prometheus scrapping.
-for item in $(kubectl -n traefikee get pods -l component=proxies --output=name); do
-kubectl annotate -n traefikee ${item} prometheus.io/scrape='true';
-kubectl annotate -n traefikee ${item} prometheus.io/port='8080';
-done
+kubectl apply -f gitops/
 
 # Generate credential to connect teectl to the cluster
-kubectl exec -n traefikee microsoft-controller-0 -- /traefikee generate credentials --kubernetes.kubeconfig="${KUBECONFIG}"  --cluster=microsoft > config.yaml
+kubectl exec -n traefikee ${CLUSTER_NAME}-controller-0 -- /traefikee generate credentials --kubernetes.kubeconfig="${KUBECONFIG}"  --cluster=${CLUSTER_NAME} > config.yaml
 
 # Import generated credentials
 teectl cluster import --file="config.yaml" --force
 
 # Use the imported cluster
-teectl cluster use --name microsoft
+teectl cluster use --name ${CLUSTER_NAME}
 ```
 
 ## Demo
 
 ### Exposing the dashboard
 
-Deploy the dashboard and show it to the user
-
-```
-k apply -f traefikee/ingress.yaml
-```
-
-### App v1
-
-deploy the demo application and show how to expose this application with an IngressRoute.
+Deploy the dashboard.
 
 ```bash
-k apply -f app/v1/
+sed -i "s/DOMAIN/${DOMAIN}/g" traefikee/ingress.yaml
+
+kubectl apply -f traefikee/ingress.yaml
 ```
 
-After showing that the application is exposed, explain how to enable middleware on this IngressRoute to add headers, add distributed middlewares and add security with OIDC, JWT or LDAP.
-Adapte the file [app/v1/02-ingress.yaml](app/v1/02-ingress.yaml) to match the customer needs.
+### Demo App
 
-#### Authentication Middlewares
-
-After configuring Keycloak, use the following scripts to demonstrate JWT and OAuth 2.0 middlewares:
-
-##### JWT
+Deploy the demo application and expose this application with an IngressRoute.
 
 ```bash
-# set environment variables
-KEYCLOAK_USR=""
-KEYCLOAK_PWD=""
-CLIENT_SECRET=""
+sed -i "s/DOMAIN/${DOMAIN}/g" app/02-ingress.yaml
 
-# get JWT from Keycloak server
-JWT=$(curl -L -X POST "https://keycloak.microsoft.demo.traefiklabs.tech/auth/realms/traefiklabs/protocol/openid-connect/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=demo-app" \
-  -d "client_assertion_type=" \
-  -d "grant_type=password" \
-  -d "client_secret=$CLIENT_SECRET" \
-  -d "scope=openid" \
-  -d "username=$KEYCLOAK_USR" \
-  -d "password=$KEYCLOAK_PWD" | jq -r '.access_token')
-
-# curl app with JWT in Authorization Header
-curl -H "Authorization: Bearer $JWT" \
-  https://app.microsoft.demo.traefiklabs.tech
+kubectl apply -f app/
 ```
 
-##### OAuth 2.0
-
-Add the BASIC_AUTH value to the oAuthSource authorizationHeader.
-
-```bash
-BASIC_AUTH=$(echo -n "demo-app:$CLIENT_SECRET" | base64)
-
-curl -L -X POST \
-  -H "Authorization: Basic $BASIC_AUTH" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "token_type_hint=access_token&token=$JWT" \
-  https://keycloak.microsoft.demo.traefiklabs.tech/auth/realms/traefiklabs/protocol/openid-connect/token/introspect | jq
-
-# curl app with JWT in Authorization Header
-curl -H "Authorization: Bearer $JWT" \
-  https://app.microsoft.demo.traefiklabs.tech
-```
-
-### Open API
-
-In this second scenario, explain how to use the API portal to reference the services's OpenAPI specification.
-
-```bash
-k apply -f app/openapi
-k apply -f app/openapi/old
-```
+With the application deployed, we can now add the following items:
+- Middlewares:
+  - Custom header
+  - Rate limiting
+  - OpenID Connect authentication
 
 ## Clean
 

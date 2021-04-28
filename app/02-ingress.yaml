@@ -9,19 +9,29 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`app.microsoft.demo.traefiklabs.tech`)
+      match: Host(`app.DOMAIN`)
       services:
         - name: app-v1
           port: 80
-      middlewares:
-      #   - name: test-header
-        - name: oidc-auth
-      #   - name: ratelimit
-      #   - name: ldap-auth
-      #   - name: jwt-auth
-      #   - name: oauth
+      # middlewares:
+        # - name: test-header
+        # - name: ratelimit
+        # - name: oidc-auth
   tls:
     certResolver: default
+
+## Header
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: test-header
+  namespace: app
+spec:
+  headers:
+    sslRedirect: true
+    customRequestHeaders:
+      X-Custom-Header: toto123
 
 ## Rate limit
 ---
@@ -58,77 +68,3 @@ spec:
       forwardHeaders:
         X-Traefik-Group: groups
       # claims: Contains(`groups`, `admin`)
-
-
-## Header
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: test-header
-  namespace: app
-spec:
-  headers:
-    sslRedirect: true
-    customRequestHeaders:
-      X-Custom-Header: toto123
-
-
-## JWT
-# ---
-# apiVersion: traefik.containo.us/v1alpha1
-# kind: Middleware
-# metadata:
-#   name: jwt-auth
-#   namespace: app
-# spec:
-#   plugin:
-#     jwtAuth:
-#       source: jwtSource
-#       forwardHeaders:
-#         X-User: id
-
-## OAuth 2.0
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: oauth
-  namespace: app
-spec:
-  plugin:
-    oAuthIntrospection:
-      source: oAuthSource
-      forwardHeaders:
-        X-Traefik-Group: groups
-      claims: Contains(`groups`, `admin`)
-
-## Private plugin demo
----
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: privatedemo
-  namespace: app
-spec:
-  plugin:
-    privatedemo:
-      value: powpow
-
-# ## LDAP
-# ---
-# apiVersion: traefik.containo.us/v1alpha1
-# kind: Middleware
-# metadata:
-#   name: ldap-auth
-#   namespace: app
-# spec:
-#   plugin:
-#     ldapAuth:
-#       source: ldapSource
-#       baseDN: dc=example,dc=org
-#       # searchFilter: (&(objectClass=inetOrgPerson)(gidNumber=500)(uid=%s))
-#       forwardUsername: true
-#       forwardUsernameHeader: Custom-Username-Header-Name
-#       wwwAuthenticateHeader: true
-#       wwwAuthenticateHeaderRealm: traefikee

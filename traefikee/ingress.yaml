@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`dashboard.microsoft.demo.traefiklabs.tech`)
+      match: Host(`dashboard.DOMAIN`)
       services:
         - name: api@internal
           kind: TraefikService
