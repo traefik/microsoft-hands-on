@@ -28,7 +28,7 @@ data:
 
     [authSources]
       [authSources.microsoft.oidc]
-        issuer = "https://sts.windows.net/9875c33a-9436-4a95-b5d4-fbe9bc2f2c5c/"
+        issuer = "https://sts.windows.net/AZURE_TENANT_ID/"
         clientID = "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx"
         clientSecret = "random_password"
 
