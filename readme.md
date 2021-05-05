@@ -28,19 +28,24 @@ az aks get-credentials --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} -
 # Create ad app with reply URLs
 az ad app create --display-name ${CLUSTER_NAME} --reply-urls "https://dashboard.${DOMAIN}/callback" "https://app.${DOMAIN}/callback"
 
-# Retrive the appId
+# Retrieve the appId
 AD_APP_ID=$(az ad app list --display-name ${CLUSTER_NAME} --query '[0].appId' | tr -d '"')
+
+# Add required Microsoft Graph permissions
+az ad app permission add \
+  --api 00000003-0000-0000-c000-000000000000 \
+  --api-permissions e1fe6dd8-ba31-4d61-89e7-88639da4683d=Scope 37f7f235-527c-4136-accd-4a02d197296e=Scope 64a6cdd6-aab1-4aaf-94b8-3cc8405e90d0=Scope 14dad69e-099b-42c9-810b-d002981feec1=Scope \
+  --id ${AD_APP_ID}
 
 # Generate new credentials
 az ad app credential reset --id ${AD_APP_ID}
-{
-  "appId": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
-  "name": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
-  "password": "random_password",
-  "tenant": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-}
-
-# The appId and password need to be added in the configmap `gitops/01-configmap.yaml`
+# Sample response - appId, password, and tenant values need to be added to the configmap `gitops/01-configmap.yaml`
+# {
+#   "appId": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
+#   "name": "xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
+#   "password": "random_password",
+#   "tenant": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+# }
 ```
 
 
