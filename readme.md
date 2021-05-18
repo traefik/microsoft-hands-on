@@ -7,26 +7,27 @@ export AZURE_APP_ID=aaaa
 export AZURE_TENANT_ID=bbbb
 export AZURE_PASSWORD=ccccc
 export AZURE_SUBSCRIPTION=your-subscription-id
+export AZURE_LOCATION=westeurope
 
-export CLUSTER_NAME=default
-export DOMAIN=example.com
-export LE_EMAIL=user@example.com
-
+export CLUSTER_NAME=gbb
+export PREFIX=${CLUSTER_NAME}-$(openssl rand -hex 12 | tr '[:upper:]' '[:lower:]')
+export DOMAIN=${PREFIX}.${AZURE_LOCATION}.cloudapp.azure.com
+export LE_EMAIL=michael@traefik.io
 
 # Login to azure
 az login --service-principal --username ${AZURE_APP_ID} --password ${AZURE_PASSWORD} --tenant ${AZURE_TENANT_ID}
 
 # Create group in azure for the hands on
-az group create --name ${CLUSTER_NAME} --location westeurope
+az group create --name ${CLUSTER_NAME} --location ${AZURE_LOCATION}
 
 # Create aks cluster
-az aks create --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --node-count 3 --ssh-key-value=~/.ssh/id_rsa --subscription ${AZURE_SUBSCRIPTION} --service-principal ${AZURE_APP_ID} --client-secret ${AZURE_PASSWORD}
+az aks create --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --node-count 3 --ssh-key-value=~/.ssh/id_rsa.pub --subscription ${AZURE_SUBSCRIPTION} --service-principal ${AZURE_APP_ID} --client-secret ${AZURE_PASSWORD}
 
 # Retrieve aks credentials
 az aks get-credentials --resource-group ${CLUSTER_NAME} --name ${CLUSTER_NAME} --file ~/.kube/${CLUSTER_NAME}.yaml
 
 # Create ad app with reply URLs
-az ad app create --display-name ${CLUSTER_NAME} --reply-urls "https://dashboard.${DOMAIN}/callback" "https://app.${DOMAIN}/callback"
+az ad app create --display-name ${CLUSTER_NAME} --reply-urls "https://${DOMAIN}/callback"
 
 # Retrieve the appId
 AD_APP_ID=$(az ad app list --display-name ${CLUSTER_NAME} --query '[0].appId' | tr -d '"')
@@ -48,10 +49,14 @@ az ad app credential reset --id ${AD_APP_ID}
 # }
 ```
 
+# TraefikEE
 
-## TraefikEE
+Prerequisites:
+- AKS cluster up and ready
+- Custom DNS name
+- teectl [installed](https://doc.traefik.io/traefik-enterprise/installing/teectl-cli/)
 
-### Gitops installation
+## Gitops installation
 
 ```bash
 # Create traefikee namespace
@@ -71,8 +76,14 @@ sed -i "s/CLUSTER_NAME/${CLUSTER_NAME}/g" gitops/01-configmap.yaml
 # Apply the gitops file
 kubectl apply -f gitops/
 
+# Add annotation to the LoadBalancer service to create DNS entry
+kubectl annotate service ${CLUSTER_NAME}-proxy-svc -n traefikee service.beta.kubernetes.io/azure-dns-label-name=${PREFIX}
+
+# Check DNS entry creation
+dig ${DOMAIN} # Shoudl return an A entry on the LB IP
+
 # Generate credential to connect teectl to the cluster
-kubectl exec -n traefikee ${CLUSTER_NAME}-controller-0 -- /traefikee generate credentials --kubernetes.kubeconfig="${KUBECONFIG}"  --cluster=${CLUSTER_NAME} > config.yaml
+kubectl exec -n traefikee ${CLUSTER_NAME}-controller-0 -c ${CLUSTER_NAME}-controller -- /traefikee generate credentials --kubernetes.kubeconfig="${KUBECONFIG}"  --cluster=${CLUSTER_NAME} > config.yaml
 
 # Import generated credentials
 teectl cluster import --file="config.yaml" --force

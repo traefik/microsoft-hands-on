@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`app.DOMAIN`)
+      match: Host(`DOMAIN`) && (Path(`/v1`) || Path(`/callback`))
       services:
         - name: app-v1
           port: 80

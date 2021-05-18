@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`dashboard.DOMAIN`)
+      match: Host(`DOMAIN`)
       services:
         - name: api@internal
           kind: TraefikService
