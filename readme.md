@@ -7,12 +7,14 @@ export AZURE_APP_ID=aaaa
 export AZURE_TENANT_ID=bbbb
 export AZURE_PASSWORD=ccccc
 export AZURE_SUBSCRIPTION=your-subscription-id
-export AZURE_LOCATION=westeurope
 
+export AZURE_LOCATION=westeurope
 export CLUSTER_NAME=gbb
 export PREFIX=${CLUSTER_NAME}-$(openssl rand -hex 12 | tr '[:upper:]' '[:lower:]')
 export DOMAIN=${PREFIX}.${AZURE_LOCATION}.cloudapp.azure.com
 export LE_EMAIL=michael@traefik.io
+export TRAEFIKEE_LICENSE=XXXX
+export KUBECONFIG=~/.kube/${CLUSTER_NAME}.yaml
 
 # Login to azure
 az login --service-principal --username ${AZURE_APP_ID} --password ${AZURE_PASSWORD} --tenant ${AZURE_TENANT_ID}
